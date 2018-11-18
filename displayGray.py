@@ -23,7 +23,8 @@ def producer( ):
         empty_sema.acquire()
         count += 1
         fill_sema.release()
-# producer for gray conversion
+    print('Finished extraction')
+# consumer for gray conversion
 def gray( count, outputdir='frames' ):
     infileName = '{}/frame_{:04d}.jpg'.format( 'frames', count )
     inputFrame = cv2.imread( infileName, cv2.IMREAD_COLOR )
@@ -35,11 +36,35 @@ def consume( count ):
     gray( count )
 def consumer( ):
     count = 0
-    while True:
+    while True:#continue_on:
         fill_sema.acquire()
         empty_sema.release()
         consume( count )
         count += 1
+    print( 'finished conversion' )
+#consumer for display
+def display( count, outputdir='frames' ):
+    infileName = '{}/grayscale_{:04d}.jpg'.format( outputdir, count )
+    sucess, jpgImage = cv2.imencode( '.jpg', cv2.imread( infileName, cv2.IMREAD_COLOR ) )
+    jpgAsText = base64.b64encode( jpgImage )
+    jpgRawImage = base64.b64decode( jpgAsText )
+    jpgImage = np.asarray( bytearray( jpgRawImage ), dtype=np.uint8 )
+    img = cv2.imdecode( jpgImage, cv2.IMREAD_UNCHANGED )
+    print( 'Displaying frame {}'.format( count ) )
+    cv2.imshow( 'Video', img )
+    if cv2.waitKey( 24 ) and 0xFF == ord( 'q' ):
+        return   
+def consume2( count ):
+    display( count )
+def consumer2():
+    count = 0
+    while True:
+        fill_sema.acquire()
+        empty_sema.release()
+        consume2( count )
+        count += 1
+    print( 'finished displaying' )
+    cv2.destroyAllWindows()
 # main code
 if not os.path.exists( 'frames' ):
     print( 'output directory does not exists, creating' )
@@ -47,9 +72,18 @@ if not os.path.exists( 'frames' ):
  
 pro_thread = threading.Thread( target=producer )
 con_thread = threading.Thread( target=consumer )
+con2_thread = threading.Thread( target=consumer2 )
 
+'''
+threads = [ pro_thread, con_thread] # , con2_thread]
+for thread in threads:
+    thread.start()
+for thread in threads:
+    thread.join()'''
 pro_thread.start()
 con_thread.start()
+con2_thread.start()
 
-#pro_thread.join()
-#con_thread.join()
+pro_thread.join()
+con_thread.join()
+con2_thread.join()
