@@ -96,5 +96,5 @@ con2_thread = threading.Thread( target=consumer2 )
 threads = [ pro_thread, con_thread, con2_thread ]
 for thread in threads:
     thread.start()
-for thread in threads:
-    thread.join()
+#for thread in threads:
+#    thread.join()
