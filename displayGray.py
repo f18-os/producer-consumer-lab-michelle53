@@ -1,6 +1,7 @@
 import threading, cv2, base64, sys, os
 import numpy as np
 
+alive = True
 # First thread = extract frames from file
 # extract frames from clip
 def extract( vidcap, count, image, outputdir='frames' ):
@@ -18,8 +19,9 @@ def producer( ):
     vidcap = cv2.VideoCapture( 'clip.mp4' )
     count = 0
     success, image = vidcap.read()
-    while True:
-        success, image = produce( vidcap, count, image )
+    while alive:
+        if success:
+            success, image = produce( vidcap, count, image )
         empty_sema.acquire()
         count += 1
         fill_sema.release()
@@ -28,24 +30,34 @@ def producer( ):
 def gray( count, outputdir='frames' ):
     infileName = '{}/frame_{:04d}.jpg'.format( 'frames', count )
     inputFrame = cv2.imread( infileName, cv2.IMREAD_COLOR )
+    if inputFrame is None:
+        return 0
     print( 'Converting frame {}'.format( count ) )
     grayscaleFrame = cv2.cvtColor( inputFrame, cv2.COLOR_BGR2GRAY )
     outfileName = '{}/grayscale_{:04d}.jpg'.format( outputdir, count )
     cv2.imwrite( outfileName, grayscaleFrame )
+    return 1
 def consume( count ):
-    gray( count )
+    return gray( count )
 def consumer( ):
     count = 0
-    while True:#continue_on:
+    go_on = 1
+    while alive:
         fill_sema.acquire()
         empty_sema.release()
-        consume( count )
-        count += 1
+        if go_on:
+            go_on = consume( count )
+            count += 1
     print( 'finished conversion' )
 #consumer for display
 def display( count, outputdir='frames' ):
     infileName = '{}/grayscale_{:04d}.jpg'.format( outputdir, count )
-    sucess, jpgImage = cv2.imencode( '.jpg', cv2.imread( infileName, cv2.IMREAD_COLOR ) )
+    try:
+        sucess, jpgImage = cv2.imencode( '.jpg', cv2.imread( infileName, cv2.IMREAD_COLOR ) )
+    except:
+        return 0
+    if not sucess:
+        return 0
     jpgAsText = base64.b64encode( jpgImage )
     jpgRawImage = base64.b64decode( jpgAsText )
     jpgImage = np.asarray( bytearray( jpgRawImage ), dtype=np.uint8 )
@@ -53,18 +65,24 @@ def display( count, outputdir='frames' ):
     print( 'Displaying frame {}'.format( count ) )
     cv2.imshow( 'Video', img )
     if cv2.waitKey( 24 ) and 0xFF == ord( 'q' ):
-        return   
+        return
+    return 1
 def consume2( count ):
-    display( count )
+    return display( count )
 def consumer2():
     count = 0
+    sucess = 1
     while True:
         fill_sema.acquire()
         empty_sema.release()
-        consume2( count )
+        if sucess:
+            sucess = consume2( count )
+        else:
+            print( 'finished displaying' )
+            cv2.destroyAllWindows()
+            alive = False
+            sys.exit()
         count += 1
-    print( 'finished displaying' )
-    cv2.destroyAllWindows()
 # main code
 if not os.path.exists( 'frames' ):
     print( 'output directory does not exists, creating' )
@@ -74,16 +92,9 @@ pro_thread = threading.Thread( target=producer )
 con_thread = threading.Thread( target=consumer )
 con2_thread = threading.Thread( target=consumer2 )
 
-'''
-threads = [ pro_thread, con_thread] # , con2_thread]
+
+threads = [ pro_thread, con_thread, con2_thread ]
 for thread in threads:
     thread.start()
 for thread in threads:
-    thread.join()'''
-pro_thread.start()
-con_thread.start()
-con2_thread.start()
-
-pro_thread.join()
-con_thread.join()
-con2_thread.join()
+    thread.join()
