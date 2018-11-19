@@ -10,8 +10,8 @@ def extract( vidcap, count, image, outputdir='frames' ):
     success, image = vidcap.read()
     return success, image
 # producer for extract
-fill_sema = threading.Semaphore( 0 )
-empty_sema = threading.Semaphore( 10 )
+fill_sema = threading.Semaphore( 0 ) # to fill semaphore
+empty_sema = threading.Semaphore( 10 ) # to emtpy semaphore
 def produce( vidcap, count, image ):
     success, image = extract( vidcap, count, image, outputdir='frames' )
     return success, image
@@ -19,8 +19,8 @@ def producer( ):
     vidcap = cv2.VideoCapture( 'clip.mp4' )
     count = 0
     success, image = vidcap.read()
-    while alive:
-        if success:
+    while alive: 
+        if success: # keep reading only if we are allowed
             success, image = produce( vidcap, count, image )
         empty_sema.acquire()
         count += 1
@@ -30,7 +30,7 @@ def producer( ):
 def gray( count, outputdir='frames' ):
     infileName = '{}/frame_{:04d}.jpg'.format( 'frames', count )
     inputFrame = cv2.imread( infileName, cv2.IMREAD_COLOR )
-    if inputFrame is None:
+    if inputFrame is None: # then stop converting
         return 0
     print( 'Converting frame {}'.format( count ) )
     grayscaleFrame = cv2.cvtColor( inputFrame, cv2.COLOR_BGR2GRAY )
@@ -64,7 +64,7 @@ def display( count, outputdir='frames' ):
     img = cv2.imdecode( jpgImage, cv2.IMREAD_UNCHANGED )
     print( 'Displaying frame {}'.format( count ) )
     cv2.imshow( 'Video', img )
-    if cv2.waitKey( 24 ) and 0xFF == ord( 'q' ):
+    if cv2.waitKey( 24 ) and 0xFF == ord( 'q' ): # delay of 24 milliseconds
         return
     return 1
 def consume2( count ):
@@ -75,9 +75,9 @@ def consumer2():
     while True:
         fill_sema.acquire()
         empty_sema.release()
-        if sucess:
+        if sucess: # only display if we have stuff to display
             sucess = consume2( count )
-        else:
+        else: # nothing to display then end window
             print( 'finished displaying' )
             cv2.destroyAllWindows()
             alive = False
@@ -94,7 +94,7 @@ con2_thread = threading.Thread( target=consumer2 )
 
 
 threads = [ pro_thread, con_thread, con2_thread ]
-for thread in threads:
+for thread in threads: # start threads
     thread.start()
 #for thread in threads:
 #    thread.join()
