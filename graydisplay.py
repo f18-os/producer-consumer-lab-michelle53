@@ -5,7 +5,7 @@ from threading import Thread, Lock
 mutex = Lock()
 fill_sema = threading.Semaphore( 0 )
 empty_sema = threading.Semaphore( 10 )
-extract_continue = True
+alive = True
 # extract frames from video
 def extract( vidcap, count, image, outputBuffer ):
     mutex.acquire()
@@ -29,14 +29,11 @@ def producer( outputBuffer ):
 
 # COnvert to gray
 def gray( count, inputBuffer, outputBuffer ):
-    #mutex.acquire()
     jpgImage = np.asarray( bytearray( base64.b64decode( inputBuffer.get() ) ), dtype=np.uint8 )
     gray = cv2.cvtColor( cv2.imdecode( jpgImage, cv2.IMREAD_UNCHANGED ), cv2.COLOR_BGR2GRAY )
     success, gray = cv2.imencode( '.jpg', gray )
-    
     print( 'converting frame {}'.format( count ) )
     outputBuffer.put( base64.b64encode( gray ) )
-    #mutex.release()
     return ( count + 1 )
 def consumer( inputBuffer, outputBuffer ):
     count = 0
@@ -57,11 +54,15 @@ def display( count, inputBuffer ):
     mutex.release()
     return ( count + 1 )
 def consumer2( inputBuffer ):
+    global alive
     count = 0
-    while True:
+    while alive:
         fill_sema.acquire()
         empty_sema.release()
         count = display( count, inputBuffer )
+        if inputBuffer.empty():
+            alive = False
+            break
     print( 'finished displaying' )
     cv2.destroyAllWindows()
 # QUEUE
