@@ -45,15 +45,15 @@ them in sequence
 Note: You may have ancillary objects and method in order to make you're code easer to understand and implement.
 
 ## My work
-* I understood this lab to require the usage of semaphores as a form of queue
+* I understood this lab to require the usage of semaphores, mutex, and queues
   and that is what I used for this lab. The threads follow producer consumer
   in which extracting frames is the producer and both the converting to
   grayscale and displaying are consumers. The threads run almost
   synchroniously but at the times the extraction and converting finish way
   first before the displaying. The script has to be manually killed to stop the 
-  script but all threads display that it is finished.
+  script but all threads display that it is finished and display windows is closed.
 
 * To run it we need to just do the following:
 ~~~
-python3 displayGray.py
+python3 grayDisplay.py
 ~~~
