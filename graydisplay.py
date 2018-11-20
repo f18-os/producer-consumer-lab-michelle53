@@ -2,15 +2,15 @@ import threading, cv2, base64, sys, os, queue
 import numpy as np
 from threading import Thread, Lock
 
-mutex = Lock()
+mutex = Lock() # lock
 fill_sema = threading.Semaphore( 0 )
 empty_sema = threading.Semaphore( 10 )
-alive = True
+alive = True # check if display finished
 # extract frames from video
 def extract( vidcap, count, image, outputBuffer ):
     mutex.acquire()
     success, jpgImage = cv2.imencode( '.jpg', image )
-    outputBuffer.put( base64.b64encode( jpgImage ) )
+    outputBuffer.put( base64.b64encode( jpgImage ) ) # put to buffer image as text to be used as input in gray function
     print( 'Reading frame {} {}'.format( count, success ) )
     success, image = vidcap.read()
     mutex.release()
@@ -21,19 +21,18 @@ def producer( outputBuffer ):
     vidcap = cv2.VideoCapture( 'clip.mp4' )
     success, image = vidcap.read()
     while True:
-        if success:
+        if success: # avoid cv2 errors
             success,image, count = extract( vidcap, count, image, outputBuffer )
         empty_sema.acquire()
         fill_sema.release()
     print( 'All extraction complete' )
-
-# COnvert to gray
+# Convert to gray
 def gray( count, inputBuffer, outputBuffer ):
     jpgImage = np.asarray( bytearray( base64.b64decode( inputBuffer.get() ) ), dtype=np.uint8 )
     gray = cv2.cvtColor( cv2.imdecode( jpgImage, cv2.IMREAD_UNCHANGED ), cv2.COLOR_BGR2GRAY )
     success, gray = cv2.imencode( '.jpg', gray )
     print( 'converting frame {}'.format( count ) )
-    outputBuffer.put( base64.b64encode( gray ) )
+    outputBuffer.put( base64.b64encode( gray ) ) # put image as text to another queue buffer for dispay
     return ( count + 1 )
 def consumer( inputBuffer, outputBuffer ):
     count = 0
@@ -56,7 +55,7 @@ def display( count, inputBuffer ):
 def consumer2( inputBuffer ):
     global alive
     count = 0
-    while alive:
+    while alive: # only while we can display display
         fill_sema.acquire()
         empty_sema.release()
         count = display( count, inputBuffer )
@@ -76,5 +75,3 @@ pro_thread.start()
 con_thread.start()
 con2_thread.start()
 
-#pro_thread.join()
-#con_thread.join()
